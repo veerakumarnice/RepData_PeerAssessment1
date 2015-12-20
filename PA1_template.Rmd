@@ -7,19 +7,123 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r}
+input <- read.csv("activity.csv")
+input$date <- as.Date(input$date, format="%Y-%m-%d")
+head(input)
+```
+
 
 
 
 ## What is mean total number of steps taken per day?
+```{r}
+aggr <- aggregate(input[c("steps")], by =list(input$date), FUN=sum, na.rm=TRUE)
+aggr
+hist(aggr$steps, main = "The Total number of steps taken each day", 
+     xlab = "steps", breaks = 50)
 
+```
+```{r}
+aggrmean <- aggregate(input[c("steps")], by=list(input$date), FUN=mean,
+                  na.rm=TRUE)
+aggrmedian <- aggregate(input[c("steps")], by=list(input$date), FUN=median,
+                  na.rm=TRUE)
+meanMedian <- data.frame(date=aggrmean$Group.1, Mean=aggrmean$steps,    Median=aggrmedian$steps)
+names(meanMedian) <- c("date", "mean", "median")
+meanMedian
+```
+
+Note: The mean and median columns above may produce NA's as these days have all the steps as NA.
 
 
 ## What is the average daily activity pattern?
 
+```{r}
+aggrInterval <- aggregate(input[c("steps")], by = list(input$interval), FUN=mean, na.rm=TRUE)
+names(aggrInterval) <- c("interval", "steps")
+plot(aggrInterval$interval, aggrInterval$steps, type= "l", main = "Average number of steps taken", xlab = "Intervals" , ylab="Average steps" )
+head(aggrInterval, n=50)
+
+```
+
+The Interval that contains the maximum number of average steps is
+```{r}
+aggrInterval$interval[which(aggrInterval$steps== max(aggrInterval$steps))]
+
+```
 
 
 ## Imputing missing values
 
+The total number of missingvalues include
+```{r}
+sum(is.na(input$steps))
+```
+
+
+
+using the mean of the 5-minutes interval for imputing missing values
+```{r}
+newdata <- input
+for(i in 1:nrow(input)) {
+    if(is.na(newdata$steps[i])) {
+        newdata$steps[i] <- aggrInterval$steps[which(aggrInterval$interval == newdata$interval[i])]
+    }    
+}
+```
+
+Calculating the sum of steps taken for the newly created dataset.
+```{r}
+newsum <- aggregate(newdata[c("steps")], by =list(newdata$date), FUN=sum, na.rm=TRUE)
+newsum
+hist(newsum$steps, main = "The Total number of steps taken each day", 
+     xlab = "steps", breaks = 50)
+
+```
+* Imputing missing values has the effect of normalizing the distribution as it can be seen from the histigram
+
+Calculating mean and median for the new Dataset.
+```{r}
+newmean <- aggregate(newdata[c("steps")], by=list(newdata$date), FUN=mean,
+                  na.rm=TRUE)
+newmedian <- aggregate(newdata[c("steps")], by=list(newdata$date), FUN=median,
+                  na.rm=TRUE)
+newmeanMedian <- data.frame(date=newmean$Group.1, Mean=newmean$steps,    Median=newmedian$steps)
+names(newmeanMedian) <- c("date", "mean", "median")
+newmeanMedian
+
+```
+
+* The mean and median values of the newly created dataset doesn't deviate from the first part of the assignment.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Calculating whether wekday or weekend. and plotting the interval mean plot.
+```{r}
+week <- vector(mode="character", length = nrow(input))
+for(i in 1:nrow(input)) {
+    date <- as.Date(input$date[i],format="%Y-%m-%d" )
+    if(weekdays(date)=="Saturday" || weekdays(date)=="Sunday") {
+        week[i] <- "weekend"
+    
+    }
+    else
+        week[i] <- "weekday"
+    
+}
+updatedframe <- data.frame(input, week)
+par(mfrow = c(2,1))
+day <- subset(updatedframe, updatedframe$week=="weekday")
+end <- subset(updatedframe, updatedframe$week=="weekend")
+dayaggr <- aggregate(day[c("steps")], by=list(day$interval), FUN=sum,na.rm=TRUE)
+endaggr <- aggregate(end[c("steps")], by=list(end$interval), FUN=sum,na.rm=TRUE)
+plot(dayaggr$Group.1,dayaggr$steps , type="l", ylab = "Number of steps", main = "Weekday", xlab="Interval")
+plot(endaggr$Group.1,endaggr$steps , type="l", ylab = "Number of steps", main = "Weekend", xlab = "Interval")
+
+
+
+```
+
+
